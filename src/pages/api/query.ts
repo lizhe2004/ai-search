@@ -15,7 +15,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  const { query, rid, model } =req.body ;
+  const { query, rid, model } = req.body ;
 
   MODEL = model ? model : process.env.CHAT_MODEL;
 

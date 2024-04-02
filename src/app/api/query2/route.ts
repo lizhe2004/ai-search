@@ -1,6 +1,5 @@
 // 引入所需模块
-import type { NextApiRequest, NextApiResponse } from "next";
-import { Readable } from "stream";
+// import type { NextApiRequest } from "next";
 import SerperApi from "../../../utils/serper.api";
 import OpenAI from "openai";
 // export const runtime = 'edge';
@@ -9,70 +8,52 @@ let MODEL = "gpt-3.5-turbo";
 
 /**
  * 入口：处理API请求，根据用户问题获取相关上下文并调用OpenAI生成回答和相关问题。
- * @param {NextApiRequest} req 请求对象。
- * @param {NextApiResponse} res 响应对象。
+ * @param req 请求对象。
  */
-export  async function POST(
-  req: Request
- 
-) {
-
-  const { query, rid, model } =await req.json()
+export async function POST(req: Request) {
+  const { query, rid, model } = await req.json();
   // console.log(query, rid, model)
 
   MODEL = model ? model : process.env.CHAT_MODEL;
-
-  // 设置响应头并将流内容发送给客户端
-  // res.setHeader("Content-Type", "text/html; charset=utf-8");
-  // res.setHeader("Transfer-Encoding", "chunked");
-  // res.setHeader("Access-Control-Allow-Origin", "*");
-  // res.setHeader("Cache-Control", "no-cache, no-transform");
-  // res.setHeader("X-Accel-Buffering", "no");
-  // 创建一个Readable流用于响应
-  // const readable = new Readable({ read() {} });
-  // readable.pipe(res);
-
 
   const encoder = new TextEncoder();
   const readableStream = new ReadableStream({
     // The start method is where you'll add the stream's content
     async start(controller) {
-      const text = 'Stream me!';
       // Queue the encoded content into the stream
 
-    // 第一步：获取与用户问题相关的数据
-    const serperData = await SerperApi(query);
+      // 第一步：获取与用户问题相关的数据
+      const serperData = await SerperApi(query);
 
-    const initialPayload = createInitialPayload(query, rid, serperData);
-    // readable.push(initialPayload);
-    controller.enqueue(encoder.encode(initialPayload));
+      const initialPayload = createInitialPayload(query, rid, serperData);
+      // readable.push(initialPayload);
+      controller.enqueue(encoder.encode(initialPayload));
 
-    // 第二步：将获得的数据发送给OpenAI处理
-    const openai = initializeOpenAI();
-    const stream = await requestOpenAICompletion(openai, query, serperData);
+      // 第二步：将获得的数据发送给OpenAI处理
+      const openai = initializeOpenAI();
+      const stream = await requestOpenAICompletion(openai, query, serperData);
 
-    // 读取并处理OpenAI返回的流数据
-    for await (const chunk of stream) {
-      // readable.push(chunk.choices[0]?.delta?.content || "");
-      controller.enqueue(encoder.encode(chunk.choices[0]?.delta?.content || ""));
-    }
+      // 读取并处理OpenAI返回的流数据
+      for await (const chunk of stream) {
+        // readable.push(chunk.choices[0]?.delta?.content || "");
+        controller.enqueue(
+          encoder.encode(chunk.choices[0]?.delta?.content || ""),
+        );
+      }
 
+      // 第三步：生成相关问题
+      const relatedQuestions = await generateRelatedQuestions(
+        openai,
+        query,
+        serperData,
+      );
+      // readable.push("\n\n__RELATED_QUESTIONS__\n\n");
+      controller.enqueue(encoder.encode("\n\n__RELATED_QUESTIONS__\n\n"));
+      controller.enqueue(encoder.encode(JSON.stringify(relatedQuestions)));
 
-  // 第三步：生成相关问题
-  const relatedQuestions = await generateRelatedQuestions(
-    openai,
-    query,
-    serperData,
-  );
-  // readable.push("\n\n__RELATED_QUESTIONS__\n\n");
-  controller.enqueue(encoder.encode("\n\n__RELATED_QUESTIONS__\n\n"));
-  controller.enqueue(encoder.encode(JSON.stringify(relatedQuestions)));
+      // readable.push(JSON.stringify(relatedQuestions));
 
-  // readable.push(JSON.stringify(relatedQuestions));
-
-  // readable.push(null); // 结束流
-
-
+      // readable.push(null); // 结束流
 
       // controller.enqueue(encoder.encode(text));
       // Prevent more content from being
@@ -82,10 +63,9 @@ export  async function POST(
   });
   return new Response(readableStream, {
     headers: {
-      'Content-Type': 'text/html; charset=utf-8',
+      "Content-Type": "text/html; charset=utf-8",
     },
   });
-
 
   // // 第一步：获取与用户问题相关的数据
   // const serperData = await SerperApi(query);
@@ -113,7 +93,6 @@ export  async function POST(
   // readable.push(JSON.stringify(relatedQuestions));
 
   // readable.push(null); // 结束流
-
 }
 
 /**

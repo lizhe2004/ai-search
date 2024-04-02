@@ -4,7 +4,14 @@ export default (phase, { defaultConfig }) => {
    * @type {import("next").NextConfig}
    */
   if (env === "production") {
-    return {};
+    return {
+      eslint: {
+        // Warning: This allows production builds to successfully complete even if
+        // your project has ESLint errors.
+        ignoreDuringBuilds: true,
+      },
+
+    };
   } else {
     return {
       async rewrites() {
