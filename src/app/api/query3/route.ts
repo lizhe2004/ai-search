@@ -1,7 +1,7 @@
 // 引入所需模块
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Readable } from "stream";
-import SerperApi from "../../utils/serper.api";
+import SerperApi from "../../../utils/serper.api";
 import OpenAI from "openai";
 
 let MODEL = "gpt-3.5-turbo";
@@ -11,29 +11,25 @@ let MODEL = "gpt-3.5-turbo";
  * @param {NextApiRequest} req 请求对象。
  * @param {NextApiResponse} res 响应对象。
  */
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
-  const { query, rid, model } =req.body ;
+export  async function POST(  req: NextApiRequest,
+  res: NextApiResponse,) {
+  console.log("打印出请求体" )
+ 
+  const { query, rid, model } =await req.json()
+  console.log(query, rid, model)
 
   MODEL = model ? model : process.env.CHAT_MODEL;
-
-  // 设置响应头并将流内容发送给客户端
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader("Transfer-Encoding", "chunked");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("X-Accel-Buffering", "no");
-  // 创建一个Readable流用于响应
-  const readable = new Readable({ read() {} });
-  readable.pipe(res);
+   // 创建一个Readable流用于响应
+  // const readable = new Readable({ read() {} });
+  // readable.pipe(res);
+  console.log(res)
 
   // 第一步：获取与用户问题相关的数据
   const serperData = await SerperApi(query);
 
   const initialPayload = createInitialPayload(query, rid, serperData);
-  readable.push(initialPayload);
+  // readable.push(initialPayload);
+  res.write(initialPayload);
 
   // 第二步：将获得的数据发送给OpenAI处理
   const openai = initializeOpenAI();
@@ -41,7 +37,8 @@ export default async function handler(
 
   // 读取并处理OpenAI返回的流数据
   for await (const chunk of stream) {
-    readable.push(chunk.choices[0]?.delta?.content || "");
+    // readable.push(chunk.choices[0]?.delta?.content || "");
+    res.write(chunk.choices[0]?.delta?.content || "");
   }
 
   // // 第三步：生成相关问题

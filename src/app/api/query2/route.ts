@@ -1,8 +1,9 @@
 // 引入所需模块
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Readable } from "stream";
-import SerperApi from "../../utils/serper.api";
+import SerperApi from "../../../utils/serper.api";
 import OpenAI from "openai";
+// export const runtime = 'edge';
 
 let MODEL = "gpt-3.5-turbo";
 
@@ -11,38 +12,95 @@ let MODEL = "gpt-3.5-turbo";
  * @param {NextApiRequest} req 请求对象。
  * @param {NextApiResponse} res 响应对象。
  */
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
+export  async function POST(
+  req: Request
+ 
 ) {
-  const { query, rid, model } =req.body ;
+
+  const { query, rid, model } =await req.json()
+  // console.log(query, rid, model)
 
   MODEL = model ? model : process.env.CHAT_MODEL;
 
   // 设置响应头并将流内容发送给客户端
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader("Transfer-Encoding", "chunked");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("X-Accel-Buffering", "no");
+  // res.setHeader("Content-Type", "text/html; charset=utf-8");
+  // res.setHeader("Transfer-Encoding", "chunked");
+  // res.setHeader("Access-Control-Allow-Origin", "*");
+  // res.setHeader("Cache-Control", "no-cache, no-transform");
+  // res.setHeader("X-Accel-Buffering", "no");
   // 创建一个Readable流用于响应
-  const readable = new Readable({ read() {} });
-  readable.pipe(res);
+  // const readable = new Readable({ read() {} });
+  // readable.pipe(res);
 
-  // 第一步：获取与用户问题相关的数据
-  const serperData = await SerperApi(query);
 
-  const initialPayload = createInitialPayload(query, rid, serperData);
-  readable.push(initialPayload);
+  const encoder = new TextEncoder();
+  const readableStream = new ReadableStream({
+    // The start method is where you'll add the stream's content
+    async start(controller) {
+      const text = 'Stream me!';
+      // Queue the encoded content into the stream
 
-  // 第二步：将获得的数据发送给OpenAI处理
-  const openai = initializeOpenAI();
-  const stream = await requestOpenAICompletion(openai, query, serperData);
+    // 第一步：获取与用户问题相关的数据
+    const serperData = await SerperApi(query);
 
-  // 读取并处理OpenAI返回的流数据
-  for await (const chunk of stream) {
-    readable.push(chunk.choices[0]?.delta?.content || "");
-  }
+    const initialPayload = createInitialPayload(query, rid, serperData);
+    // readable.push(initialPayload);
+    controller.enqueue(encoder.encode(initialPayload));
+
+    // 第二步：将获得的数据发送给OpenAI处理
+    const openai = initializeOpenAI();
+    const stream = await requestOpenAICompletion(openai, query, serperData);
+
+    // 读取并处理OpenAI返回的流数据
+    for await (const chunk of stream) {
+      // readable.push(chunk.choices[0]?.delta?.content || "");
+      controller.enqueue(encoder.encode(chunk.choices[0]?.delta?.content || ""));
+    }
+
+
+  // 第三步：生成相关问题
+  const relatedQuestions = await generateRelatedQuestions(
+    openai,
+    query,
+    serperData,
+  );
+  // readable.push("\n\n__RELATED_QUESTIONS__\n\n");
+  controller.enqueue(encoder.encode("\n\n__RELATED_QUESTIONS__\n\n"));
+  controller.enqueue(encoder.encode(JSON.stringify(relatedQuestions)));
+
+  // readable.push(JSON.stringify(relatedQuestions));
+
+  // readable.push(null); // 结束流
+
+
+
+      // controller.enqueue(encoder.encode(text));
+      // Prevent more content from being
+      // added to the stream
+      controller.close();
+    },
+  });
+  return new Response(readableStream, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+    },
+  });
+
+
+  // // 第一步：获取与用户问题相关的数据
+  // const serperData = await SerperApi(query);
+
+  // const initialPayload = createInitialPayload(query, rid, serperData);
+  // readable.push(initialPayload);
+
+  // // 第二步：将获得的数据发送给OpenAI处理
+  // const openai = initializeOpenAI();
+  // const stream = await requestOpenAICompletion(openai, query, serperData);
+
+  // // 读取并处理OpenAI返回的流数据
+  // for await (const chunk of stream) {
+  //   readable.push(chunk.choices[0]?.delta?.content || "");
+  // }
 
   // // 第三步：生成相关问题
   // const relatedQuestions = await generateRelatedQuestions(
@@ -54,7 +112,8 @@ export default async function handler(
 
   // readable.push(JSON.stringify(relatedQuestions));
 
-  readable.push(null); // 结束流
+  // readable.push(null); // 结束流
+
 }
 
 /**
@@ -126,7 +185,7 @@ function generateSystemMessageContent(serperData: any) {
 
   Your answer must be correct, accurate and written by an expert using an unbiased and professional tone. Please limit to 1024 tokens. Do not give any information that is not related to the question, and do not repeat. Say "information is missing on" followed by the related topic, if the given context do not provide sufficient information.  
 
-  Please cite the contexts with the reference numbers, in the format [citation:x]. If a sentence comes from multiple contexts, please list all applicable citations, like [citation:3][citation:5]. Other than code and specific names and citations, your answer must be written in the same language as the question.  
+  Please cite the contexts with the reference numbers, in the format [citation:x]. If a sentence comes from multiple contexts, please list all applicable citations, like [citation:3][citation:5]. Other than code and specific names and citations, your answer must be written in Chinese 中文.  
   
   Here are the set of contexts:
 
