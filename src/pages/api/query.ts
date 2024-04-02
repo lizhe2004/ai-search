@@ -34,7 +34,7 @@ export default async function handler(
 
   const initialPayload = createInitialPayload(query, rid, serperData);
   readable.push(initialPayload);
-  readable.flush();
+  res.flush();
 
   // 第二步：将获得的数据发送给OpenAI处理
   const openai = initializeOpenAI();
@@ -43,7 +43,7 @@ export default async function handler(
   // 读取并处理OpenAI返回的流数据
   for await (const chunk of stream) {
     readable.push(chunk.choices[0]?.delta?.content || "");
-    readable.flush();
+    res.flush();
   }
 
   // 第三步：生成相关问题
@@ -53,9 +53,9 @@ export default async function handler(
     serperData,
   );
   readable.push("\n\n__RELATED_QUESTIONS__\n\n");
-  readable.flush();
+   res.flush();
   readable.push(JSON.stringify(relatedQuestions));
-  readable.flush();
+  res.flush();
   readable.push(null); // 结束流
 }
 
