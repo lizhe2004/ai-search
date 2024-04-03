@@ -25,17 +25,5 @@ npm run dev
 http://localhost:3000/
 ```
 
-## 悬赏问题
-
-本项目还未完成，目前还需要解决的问题如下：
-
-### ✅ 1.还不支持流式返回【已解决】
-
-> 悬赏价格：500人民币
-> 状态：已解决 [pull链接](https://github.com/code-moss/codemoss-search/pull/1)
-
-问题描述：在http://localhost:3000/ 发送消息之后，会等所有消息都返回之后，才渲染内容；
-
-但是我代码写的是流式返回，应该是一段段返回内容，效果可以参考这个：https://search.lepton.run/
-
-我的代码位置：/src/pages/api/query.ts
+## 一键安装到Vercel
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Flizhe2004%2Fai-search&env=CHAT_MODEL,BASE_URL,API_KEY,SERPER_API_KEY&envDescription=CHAT_MODEL%3A%20%E9%BB%98%E8%AE%A4%E4%BD%BF%E7%94%A8%E7%9A%84%E6%A8%A1%E5%9E%8B%20BASE_URL%20%3BOpenAI%E7%9A%84%E5%9C%B0%E5%9D%80%20%E5%B8%A6v1%E8%B7%AF%E5%BE%84%20API_KEY%EF%BC%9AOpenAi%E7%9A%84Key%20SERPER_API_KEY%EF%BC%9ASerper%E7%9A%84key&demo-title=AI%E6%90%9C%E7%B4%A2&demo-url=https%3A%2F%2Fsou.lidaxia.io)
